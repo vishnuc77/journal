@@ -3,6 +3,7 @@ import { supabase } from './supabaseClient'
 import HomePage from './pages/HomePage'
 import StatsPage from './pages/StatsPage'
 import { NUMERIC_FIELDS } from './constants'
+import { parseLighterCsv } from './lib/csvImport'
 
 export default function App() {
   const [page, setPage] = useState('home')
@@ -86,6 +87,53 @@ export default function App() {
     setShowForm(true)
   }
 
+  async function handleImportCsv(file) {
+    setError('')
+    try {
+      const text = await file.text()
+      const parsed = parseLighterCsv(text)
+      if (!parsed.length) {
+        setError('No complete open+close trade pairs found in this CSV.')
+        return
+      }
+      const payloads = parsed.map((p) => ({
+        trade_date: p.trade_date,
+        screenshot_trade: [],
+        screenshot_context: [],
+        screenshot_day: [],
+        strategy: null,
+        direction: p.direction,
+        setup_grade: null,
+        entry_price: p.entry_price,
+        position_size_usd: p.position_size_usd,
+        position_size_units: p.position_size_units,
+        account_risk: null,
+        stop_loss: null,
+        take_profit: null,
+        r: null,
+        fees: p.fees,
+        exit_price: p.exit_price,
+        exit_datetime: p.exit_datetime,
+        context: null,
+        entry_reason: null,
+        reason_for_cutting: null,
+        cut_result: null,
+        feelings: null,
+        lessons: null,
+        would_take_again: null,
+      }))
+      const { error } = await supabase.from('trades').insert(payloads)
+      if (error) {
+        setError(error.message)
+        return
+      }
+      fetchTrades()
+      alert(`Imported ${payloads.length} trade${payloads.length !== 1 ? 's' : ''} as drafts — open each to add screenshots, strategy, and notes.`)
+    } catch (err) {
+      setError(err.message || 'Failed to import CSV')
+    }
+  }
+
   return (
     <div className="app">
       <header className="app-header">
@@ -120,6 +168,7 @@ export default function App() {
           }}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          onImportCsv={handleImportCsv}
         />
       ) : (
         <StatsPage trades={trades} />

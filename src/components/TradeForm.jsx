@@ -7,12 +7,24 @@ import {
   EMPTY_TRADE,
 } from "../constants";
 
+function toDatetimeLocalValue(value) {
+  if (!value) return ''
+  return value.slice(0, 16)
+}
+
 export default function TradeForm({ initialTrade, onSave, onCancel, saving }) {
   const [trade, setTrade] = useState(initialTrade || EMPTY_TRADE)
-  const [validationError, setValidationError] = useState('')
 
   useEffect(() => {
-    setTrade(initialTrade || EMPTY_TRADE)
+    if (initialTrade) {
+      setTrade({
+        ...initialTrade,
+        trade_date: toDatetimeLocalValue(initialTrade.trade_date),
+        exit_datetime: toDatetimeLocalValue(initialTrade.exit_datetime),
+      })
+    } else {
+      setTrade(EMPTY_TRADE)
+    }
   }, [initialTrade])
 
   function set(field, value) {
@@ -21,21 +33,11 @@ export default function TradeForm({ initialTrade, onSave, onCancel, saving }) {
 
   function handleSubmit(e) {
     e.preventDefault()
-    const missingShots = []
-    if (!(trade.screenshot_trade || []).length) missingShots.push('Trade')
-    if (!(trade.screenshot_context || []).length) missingShots.push('Footprint / flows')
-    if (!(trade.screenshot_day || []).length) missingShots.push('Current day')
-    if (missingShots.length) {
-      setValidationError(`Add at least one screenshot for: ${missingShots.join(', ')}`)
-      return
-    }
-    setValidationError('')
     onSave(trade)
   }
 
   return (
     <form className="trade-form" onSubmit={handleSubmit}>
-      {validationError && <div className="banner-error">{validationError}</div>}
       <section className="form-section">
         <h3>Setup</h3>
         <div className="grid-2">
@@ -44,14 +46,12 @@ export default function TradeForm({ initialTrade, onSave, onCancel, saving }) {
               type="datetime-local"
               value={trade.trade_date || ""}
               onChange={(e) => set("trade_date", e.target.value)}
-              required
             />
           </Field>
           <Field label="Strategy">
             <select
               value={trade.strategy || ""}
               onChange={(e) => set("strategy", e.target.value)}
-              required
             >
               {STRATEGY_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -64,7 +64,6 @@ export default function TradeForm({ initialTrade, onSave, onCancel, saving }) {
             <select
               value={trade.direction || ""}
               onChange={(e) => set("direction", e.target.value)}
-              required
             >
               {DIRECTION_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>
@@ -79,7 +78,6 @@ export default function TradeForm({ initialTrade, onSave, onCancel, saving }) {
               placeholder="e.g. A / B / C"
               value={trade.setup_grade || ""}
               onChange={(e) => set("setup_grade", e.target.value)}
-              required
             />
           </Field>
         </div>
@@ -115,7 +113,6 @@ export default function TradeForm({ initialTrade, onSave, onCancel, saving }) {
               step="any"
               value={trade.entry_price || ""}
               onChange={(e) => set("entry_price", e.target.value)}
-              required
             />
           </Field>
           <Field label="Position size ($)">
@@ -124,7 +121,6 @@ export default function TradeForm({ initialTrade, onSave, onCancel, saving }) {
               step="any"
               value={trade.position_size_usd || ""}
               onChange={(e) => set("position_size_usd", e.target.value)}
-              required
             />
           </Field>
           <Field label="Position size (units)">
@@ -133,7 +129,6 @@ export default function TradeForm({ initialTrade, onSave, onCancel, saving }) {
               step="any"
               value={trade.position_size_units || ""}
               onChange={(e) => set("position_size_units", e.target.value)}
-              required
             />
           </Field>
           <Field label="Account risk (%)">
@@ -142,7 +137,6 @@ export default function TradeForm({ initialTrade, onSave, onCancel, saving }) {
               step="any"
               value={trade.account_risk || ""}
               onChange={(e) => set("account_risk", e.target.value)}
-              required
             />
           </Field>
           <Field label="Stop loss">
@@ -151,7 +145,6 @@ export default function TradeForm({ initialTrade, onSave, onCancel, saving }) {
               step="any"
               value={trade.stop_loss || ""}
               onChange={(e) => set("stop_loss", e.target.value)}
-              required
             />
           </Field>
           <Field label="Take profit">
@@ -160,7 +153,6 @@ export default function TradeForm({ initialTrade, onSave, onCancel, saving }) {
               step="any"
               value={trade.take_profit || ""}
               onChange={(e) => set("take_profit", e.target.value)}
-              required
             />
           </Field>
           <Field label="Exit price">
@@ -169,7 +161,6 @@ export default function TradeForm({ initialTrade, onSave, onCancel, saving }) {
               step="any"
               value={trade.exit_price || ""}
               onChange={(e) => set("exit_price", e.target.value)}
-              required
             />
           </Field>
           <Field label="Exit date & time">
@@ -177,7 +168,6 @@ export default function TradeForm({ initialTrade, onSave, onCancel, saving }) {
               type="datetime-local"
               value={trade.exit_datetime || ""}
               onChange={(e) => set("exit_datetime", e.target.value)}
-              required
             />
           </Field>
           <Field label="Fees">
@@ -186,7 +176,6 @@ export default function TradeForm({ initialTrade, onSave, onCancel, saving }) {
               step="any"
               value={trade.fees || ""}
               onChange={(e) => set("fees", e.target.value)}
-              required
             />
           </Field>
           <Field label="Planned R">
@@ -195,7 +184,6 @@ export default function TradeForm({ initialTrade, onSave, onCancel, saving }) {
               step="any"
               value={trade.r || ""}
               onChange={(e) => set("r", e.target.value)}
-              required
             />
           </Field>
         </div>
@@ -209,7 +197,6 @@ export default function TradeForm({ initialTrade, onSave, onCancel, saving }) {
               rows={2}
               value={trade.reason_for_cutting || ""}
               onChange={(e) => set("reason_for_cutting", e.target.value)}
-              required
             />
           </Field>
           <Field label="Cut result">
@@ -217,7 +204,6 @@ export default function TradeForm({ initialTrade, onSave, onCancel, saving }) {
               rows={2}
               value={trade.cut_result || ""}
               onChange={(e) => set("cut_result", e.target.value)}
-              required
             />
           </Field>
         </div>
@@ -231,7 +217,6 @@ export default function TradeForm({ initialTrade, onSave, onCancel, saving }) {
               rows={2}
               value={trade.context || ""}
               onChange={(e) => set("context", e.target.value)}
-              required
             />
           </Field>
           <Field label="Why did you enter">
@@ -239,7 +224,6 @@ export default function TradeForm({ initialTrade, onSave, onCancel, saving }) {
               rows={2}
               value={trade.entry_reason || ""}
               onChange={(e) => set("entry_reason", e.target.value)}
-              required
             />
           </Field>
           <Field label="How did you feel before and after entry">
@@ -247,7 +231,6 @@ export default function TradeForm({ initialTrade, onSave, onCancel, saving }) {
               rows={2}
               value={trade.feelings || ""}
               onChange={(e) => set("feelings", e.target.value)}
-              required
             />
           </Field>
           <Field label="Lessons">
@@ -255,14 +238,12 @@ export default function TradeForm({ initialTrade, onSave, onCancel, saving }) {
               rows={2}
               value={trade.lessons || ""}
               onChange={(e) => set("lessons", e.target.value)}
-              required
             />
           </Field>
           <Field label="Would you take this trade again?">
             <select
               value={trade.would_take_again || ""}
               onChange={(e) => set("would_take_again", e.target.value)}
-              required
             >
               {AGAIN_OPTIONS.map((o) => (
                 <option key={o.value} value={o.value}>

@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
 import TradeForm from '../components/TradeForm'
 import TradeList from '../components/TradeList'
 import StatsBlock from '../components/StatsBlock'
@@ -12,8 +12,15 @@ const MONTH_FIELDS = ['totalTrades', 'wins', 'losses', 'totalR', 'avgWin', 'avgL
 
 export default function HomePage({
   trades, loading, showForm, editingTrade, saving,
-  onNewTrade, onSave, onCancel, onEdit, onDelete,
+  onNewTrade, onSave, onCancel, onEdit, onDelete, onImportCsv,
 }) {
+  const fileInputRef = useRef(null)
+
+  function handleFileChange(e) {
+    const file = e.target.files?.[0]
+    if (file) onImportCsv(file)
+    e.target.value = ''
+  }
   const overallStats = useMemo(() => computeStats(trades), [trades])
   const currentMonthKey = monthKey(new Date().toISOString())
   const currentMonthTrades = useMemo(
@@ -26,9 +33,21 @@ export default function HomePage({
     <div>
       <div className="page-actions">
         {!showForm && (
-          <button className="btn-primary" onClick={onNewTrade}>
-            + New trade
-          </button>
+          <>
+            <button className="btn-secondary" onClick={() => fileInputRef.current?.click()}>
+              Import CSV
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv"
+              style={{ display: 'none' }}
+              onChange={handleFileChange}
+            />
+            <button className="btn-primary" onClick={onNewTrade}>
+              + New trade
+            </button>
+          </>
         )}
       </div>
 

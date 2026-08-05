@@ -113,6 +113,25 @@ function toNum(v) {
     })
     return groups
   }
+
+  export function dayKey(dateStr) {
+    if (!dateStr) return null
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return null
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
+  
+  export function groupByDayPnl(trades) {
+    const byDay = {}
+    trades.forEach((t) => {
+      const key = dayKey(t.trade_date)
+      if (!key) return
+      const pnl = tradePnl(t)
+      if (pnl === null) return
+      byDay[key] = (byDay[key] || 0) + pnl
+    })
+    return byDay
+  }
   
   export const STAT_FIELDS = {
     totalTrades: { label: 'Total trades', format: (v) => v },

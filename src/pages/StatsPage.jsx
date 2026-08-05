@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import StatsBlock from '../components/StatsBlock'
 import PnlCurve from '../components/PnlCurve'
+import MonthCalendar from '../components/MonthCalendar'
 import { computeStats, groupByMonth, monthLabel } from '../lib/stats'
 
 const FULL_FIELDS = [
@@ -41,6 +42,7 @@ export default function StatsPage({ trades }) {
         {selectedMonth ? (
           <>
             <StatsBlock stats={monthStats} fields={FULL_FIELDS} />
+            <MonthCalendar monthKeyStr={selectedMonth} trades={monthTrades} />
             <PnlCurve trades={monthTrades} />
           </>
         ) : (

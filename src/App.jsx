@@ -91,12 +91,16 @@ export default function App() {
     setError('')
     try {
       const text = await file.text()
-      const parsed = parseLighterCsv(text)
-      if (!parsed.length) {
-        setError('No complete open+close trade pairs found in this CSV.')
+      const { complete, orphanClose, trailingOpen } = parseLighterCsv(text)
+      if (!complete.length) {
+        const hints = []
+        if (orphanClose) hints.push('close-only row(s) without a matching open in this file')
+        if (trailingOpen) hints.push('open-only row(s) without a close yet')
+        const suffix = hints.length ? ` (${hints.join('; ')})` : ''
+        setError(`No complete open+close trade pairs found in this CSV.${suffix}`)
         return
       }
-      const payloads = parsed.map((p) => ({
+      const payloads = complete.map((p) => ({
         trade_date: p.trade_date,
         screenshot_trade: [],
         screenshot_context: [],
@@ -128,7 +132,16 @@ export default function App() {
         return
       }
       fetchTrades()
-      alert(`Imported ${payloads.length} trade${payloads.length !== 1 ? 's' : ''} as drafts — open each to add screenshots, strategy, and notes.`)
+      const skipped = []
+      if (orphanClose) skipped.push('close-only fill(s) from a prior session')
+      if (trailingOpen) skipped.push('still-open position fill(s)')
+      const skippedNote =
+        skipped.length > 0
+          ? `\n\nSkipped: ${skipped.join(' and ')} — re-import after those legs appear in an export, or enter them manually.`
+          : ''
+      alert(
+        `Imported ${payloads.length} trade${payloads.length !== 1 ? 's' : ''} as drafts — open each to add screenshots, strategy, and notes.${skippedNote}`
+      )
     } catch (err) {
       setError(err.message || 'Failed to import CSV')
     }

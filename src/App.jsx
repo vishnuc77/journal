@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient'
 import HomePage from './pages/HomePage'
 import StatsPage from './pages/StatsPage'
 import { NUMERIC_FIELDS } from './constants'
-import { parseLighterCsv } from './lib/csvImport'
+import { parseLighterCsv, parseTxflowCsv } from './lib/csvImport'
 
 export default function App() {
   const [page, setPage] = useState('home')
@@ -87,11 +87,40 @@ export default function App() {
     setShowForm(true)
   }
 
-  async function handleImportCsv(file) {
+  function draftPayloads(complete) {
+    return complete.map((p) => ({
+      trade_date: p.trade_date,
+      screenshot_trade: [],
+      screenshot_context: [],
+      screenshot_day: [],
+      strategy: null,
+      direction: p.direction,
+      setup_grade: null,
+      entry_price: p.entry_price,
+      position_size_usd: p.position_size_usd,
+      position_size_units: p.position_size_units,
+      account_risk: null,
+      stop_loss: null,
+      take_profit: null,
+      r: null,
+      fees: p.fees,
+      exit_price: p.exit_price,
+      exit_datetime: p.exit_datetime,
+      context: null,
+      entry_reason: null,
+      reason_for_cutting: null,
+      cut_result: null,
+      feelings: null,
+      lessons: null,
+      would_take_again: null,
+    }))
+  }
+
+  async function importParsedCsv(file, parser, failMessage) {
     setError('')
     try {
       const text = await file.text()
-      const { complete, orphanClose, trailingOpen } = parseLighterCsv(text)
+      const { complete, orphanClose, trailingOpen } = parser(text)
       if (!complete.length) {
         const hints = []
         if (orphanClose) hints.push('close-only row(s) without a matching open in this file')
@@ -100,32 +129,7 @@ export default function App() {
         setError(`No complete open+close trade pairs found in this CSV.${suffix}`)
         return
       }
-      const payloads = complete.map((p) => ({
-        trade_date: p.trade_date,
-        screenshot_trade: [],
-        screenshot_context: [],
-        screenshot_day: [],
-        strategy: null,
-        direction: p.direction,
-        setup_grade: null,
-        entry_price: p.entry_price,
-        position_size_usd: p.position_size_usd,
-        position_size_units: p.position_size_units,
-        account_risk: null,
-        stop_loss: null,
-        take_profit: null,
-        r: null,
-        fees: p.fees,
-        exit_price: p.exit_price,
-        exit_datetime: p.exit_datetime,
-        context: null,
-        entry_reason: null,
-        reason_for_cutting: null,
-        cut_result: null,
-        feelings: null,
-        lessons: null,
-        would_take_again: null,
-      }))
+      const payloads = draftPayloads(complete)
       const { error } = await supabase.from('trades').insert(payloads)
       if (error) {
         setError(error.message)
@@ -143,8 +147,16 @@ export default function App() {
         `Imported ${payloads.length} trade${payloads.length !== 1 ? 's' : ''} as drafts — open each to add screenshots, strategy, and notes.${skippedNote}`
       )
     } catch (err) {
-      setError(err.message || 'Failed to import CSV')
+      setError(err.message || failMessage)
     }
+  }
+
+  async function handleImportCsv(file) {
+    await importParsedCsv(file, parseLighterCsv, 'Failed to import CSV')
+  }
+
+  async function handleImportTxflow(file) {
+    await importParsedCsv(file, parseTxflowCsv, 'Failed to import txflow CSV')
   }
 
   return (
@@ -182,6 +194,7 @@ export default function App() {
           onEdit={handleEdit}
           onDelete={handleDelete}
           onImportCsv={handleImportCsv}
+          onImportTxflow={handleImportTxflow}
         />
       ) : (
         <StatsPage trades={trades} />

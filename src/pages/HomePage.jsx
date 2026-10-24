@@ -12,13 +12,14 @@ const MONTH_FIELDS = ['totalTrades', 'wins', 'losses', 'totalR', 'avgWin', 'avgL
 
 export default function HomePage({
   trades, loading, showForm, editingTrade, saving,
-  onNewTrade, onSave, onCancel, onEdit, onDelete, onImportCsv,
+  onNewTrade, onSave, onCancel, onEdit, onDelete, onImportCsv, onImportTxflow,
 }) {
   const fileInputRef = useRef(null)
+  const txflowInputRef = useRef(null)
 
-  function handleFileChange(e) {
+  function handleFileChange(e, importer) {
     const file = e.target.files?.[0]
-    if (file) onImportCsv(file)
+    if (file) importer(file)
     e.target.value = ''
   }
   const overallStats = useMemo(() => computeStats(trades), [trades])
@@ -42,7 +43,17 @@ export default function HomePage({
               type="file"
               accept=".csv"
               style={{ display: 'none' }}
-              onChange={handleFileChange}
+              onChange={(e) => handleFileChange(e, onImportCsv)}
+            />
+            <button className="btn-secondary" onClick={() => txflowInputRef.current?.click()}>
+              Import txflow
+            </button>
+            <input
+              ref={txflowInputRef}
+              type="file"
+              accept=".csv"
+              style={{ display: 'none' }}
+              onChange={(e) => handleFileChange(e, onImportTxflow)}
             />
             <button className="btn-primary" onClick={onNewTrade}>
               + New trade

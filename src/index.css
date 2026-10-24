@@ -343,6 +343,17 @@ textarea:focus {
   font-size: 13px;
 }
 
+.trade-row.alt-trade-row {
+  grid-template-columns: 140px 140px 80px 90px 1fr 20px;
+}
+
+.cell-notes {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
 .trade-row:hover {
   background: var(--panel-2);
 }

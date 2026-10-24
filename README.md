@@ -47,10 +47,48 @@ create table trades (
   would_take_again text
 );
 
+create table alt_trades (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz default now(),
+  trade_date timestamptz,
+  exit_datetime timestamptz,
+  pnl numeric,
+  screenshots text[] default '{}',
+  notes text
+);
+
 alter table trades enable row level security;
 
 create policy "allow all - single user app"
   on trades for all
+  using (true)
+  with check (true);
+
+alter table alt_trades enable row level security;
+
+create policy "allow all alt trades - single user app"
+  on alt_trades for all
+  using (true)
+  with check (true);
+```
+
+If the journal is already running, you only need the `alt_trades` table and its policy. Paste and run:
+
+```sql
+create table if not exists alt_trades (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz default now(),
+  trade_date timestamptz,
+  exit_datetime timestamptz,
+  pnl numeric,
+  screenshots text[] default '{}',
+  notes text
+);
+
+alter table alt_trades enable row level security;
+
+create policy "allow all alt trades - single user app"
+  on alt_trades for all
   using (true)
   with check (true);
 ```

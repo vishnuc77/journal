@@ -71,6 +71,33 @@ function toNum(v) {
       avgLossHoldTime: avg(lossHolds),
     }
   }
+
+  export function computeAltStats(trades) {
+    const withPnl = trades
+      .map((t) => ({ t, pnl: toNum(t.pnl) }))
+      .filter((x) => x.pnl !== null)
+    const wins = withPnl.filter((x) => x.pnl > 0)
+    const losses = withPnl.filter((x) => x.pnl < 0)
+    const totalPnl = withPnl.reduce((s, x) => s + x.pnl, 0)
+    const avgWin = wins.length ? wins.reduce((s, x) => s + x.pnl, 0) / wins.length : null
+    const avgLoss = losses.length ? losses.reduce((s, x) => s + x.pnl, 0) / losses.length : null
+    const avg = (arr) => (arr.length ? arr.reduce((s, x) => s + x, 0) / arr.length : null)
+    const holds = trades.map((t) => tradeHoldMinutes(t)).filter((h) => h !== null)
+    const winHolds = wins.map((x) => tradeHoldMinutes(x.t)).filter((h) => h !== null)
+    const lossHolds = losses.map((x) => tradeHoldMinutes(x.t)).filter((h) => h !== null)
+
+    return {
+      totalTrades: trades.length,
+      wins: wins.length,
+      losses: losses.length,
+      avgWin,
+      avgLoss,
+      pnl: totalPnl,
+      holdTime: avg(holds),
+      avgWinHoldTime: avg(winHolds),
+      avgLossHoldTime: avg(lossHolds),
+    }
+  }
   
   export function formatHoldTime(minutes) {
     if (minutes === null || minutes === undefined) return '—'

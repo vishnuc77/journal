@@ -2,20 +2,27 @@ import { useEffect, useState } from 'react'
 import { supabase } from './supabaseClient'
 import HomePage from './pages/HomePage'
 import StatsPage from './pages/StatsPage'
+import AltsPage from './pages/AltsPage'
 import { NUMERIC_FIELDS } from './constants'
 import { parseLighterCsv, parseTxflowCsv } from './lib/csvImport'
 
 export default function App() {
   const [page, setPage] = useState('home')
   const [trades, setTrades] = useState([])
+  const [altTrades, setAltTrades] = useState([])
   const [loading, setLoading] = useState(true)
+  const [altLoading, setAltLoading] = useState(true)
   const [error, setError] = useState('')
+  const [altError, setAltError] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingTrade, setEditingTrade] = useState(null)
+  const [showAltForm, setShowAltForm] = useState(false)
+  const [editingAltTrade, setEditingAltTrade] = useState(null)
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     fetchTrades()
+    fetchAltTrades()
   }, [])
 
   async function fetchTrades() {
@@ -33,6 +40,21 @@ export default function App() {
     setLoading(false)
   }
 
+  async function fetchAltTrades() {
+    setAltLoading(true)
+    setAltError('')
+    const { data, error } = await supabase
+      .from('alt_trades')
+      .select('*')
+      .order('trade_date', { ascending: false })
+    if (error) {
+      setAltError(error.message)
+    } else {
+      setAltTrades(data)
+    }
+    setAltLoading(false)
+  }
+
   function cleanPayload(trade) {
     const payload = { ...trade }
     delete payload.id
@@ -42,6 +64,18 @@ export default function App() {
     })
     if (payload.trade_date === '') payload.trade_date = null
     if (payload.exit_datetime === '') payload.exit_datetime = null
+    return payload
+  }
+
+  function cleanAltPayload(trade) {
+    const payload = { ...trade }
+    delete payload.id
+    delete payload.created_at
+    payload.pnl = payload.pnl === '' || payload.pnl == null ? null : Number(payload.pnl)
+    if (payload.trade_date === '') payload.trade_date = null
+    if (payload.exit_datetime === '') payload.exit_datetime = null
+    if (payload.notes === '') payload.notes = null
+    if (!payload.screenshots) payload.screenshots = []
     return payload
   }
 
@@ -65,6 +99,26 @@ export default function App() {
     fetchTrades()
   }
 
+  async function handleSaveAlt(trade) {
+    setSaving(true)
+    setAltError('')
+    const payload = cleanAltPayload(trade)
+    let res
+    if (trade.id) {
+      res = await supabase.from('alt_trades').update(payload).eq('id', trade.id)
+    } else {
+      res = await supabase.from('alt_trades').insert(payload)
+    }
+    setSaving(false)
+    if (res.error) {
+      setAltError(res.error.message)
+      return
+    }
+    setShowAltForm(false)
+    setEditingAltTrade(null)
+    fetchAltTrades()
+  }
+
   async function handleDelete(id) {
     if (!confirm('Delete this trade? This cannot be undone.')) return
     const { error } = await supabase.from('trades').delete().eq('id', id)
@@ -75,6 +129,16 @@ export default function App() {
     fetchTrades()
   }
 
+  async function handleDeleteAlt(id) {
+    if (!confirm('Delete this trade? This cannot be undone.')) return
+    const { error } = await supabase.from('alt_trades').delete().eq('id', id)
+    if (error) {
+      setAltError(error.message)
+      return
+    }
+    fetchAltTrades()
+  }
+
   function handleEdit(trade) {
     setEditingTrade(trade)
     setShowForm(true)
@@ -82,9 +146,21 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  function handleEditAlt(trade) {
+    setEditingAltTrade(trade)
+    setShowAltForm(true)
+    setPage('alts')
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   function handleNewTrade() {
     setEditingTrade(null)
     setShowForm(true)
+  }
+
+  function handleNewAltTrade() {
+    setEditingAltTrade(null)
+    setShowAltForm(true)
   }
 
   function draftPayloads(complete) {
@@ -116,8 +192,19 @@ export default function App() {
     }))
   }
 
-  async function importParsedCsv(file, parser, failMessage) {
-    setError('')
+  function altDraftPayloads(complete) {
+    const toUtcIso = (s) => (s ? `${s}:00Z` : null)
+    return complete.map((p) => ({
+      trade_date: toUtcIso(p.trade_date),
+      exit_datetime: toUtcIso(p.exit_datetime),
+      pnl: p.pnl ?? null,
+      screenshots: [],
+      notes: null,
+    }))
+  }
+
+  async function importParsedCsv(file, parser, failMessage, { table, drafts, refresh, setErr }) {
+    setErr('')
     try {
       const text = await file.text()
       const { complete, orphanClose, trailingOpen } = parser(text)
@@ -126,16 +213,16 @@ export default function App() {
         if (orphanClose) hints.push('close-only row(s) without a matching open in this file')
         if (trailingOpen) hints.push('open-only row(s) without a close yet')
         const suffix = hints.length ? ` (${hints.join('; ')})` : ''
-        setError(`No complete open+close trade pairs found in this CSV.${suffix}`)
+        setErr(`No complete open+close trade pairs found in this CSV.${suffix}`)
         return
       }
-      const payloads = draftPayloads(complete)
-      const { error } = await supabase.from('trades').insert(payloads)
+      const payloads = drafts(complete)
+      const { error } = await supabase.from(table).insert(payloads)
       if (error) {
-        setError(error.message)
+        setErr(error.message)
         return
       }
-      fetchTrades()
+      refresh()
       const skipped = []
       if (orphanClose) skipped.push('close-only fill(s) from a prior session')
       if (trailingOpen) skipped.push('still-open position fill(s)')
@@ -143,20 +230,52 @@ export default function App() {
         skipped.length > 0
           ? `\n\nSkipped: ${skipped.join(' and ')} — re-import after those legs appear in an export, or enter them manually.`
           : ''
+      const extra =
+        table === 'alt_trades'
+          ? ' Open each to add screenshots and notes.'
+          : ' Open each to add screenshots, strategy, and notes.'
       alert(
-        `Imported ${payloads.length} trade${payloads.length !== 1 ? 's' : ''} as drafts — open each to add screenshots, strategy, and notes.${skippedNote}`
+        `Imported ${payloads.length} trade${payloads.length !== 1 ? 's' : ''} as drafts.${extra}${skippedNote}`
       )
     } catch (err) {
-      setError(err.message || failMessage)
+      setErr(err.message || failMessage)
     }
   }
 
   async function handleImportCsv(file) {
-    await importParsedCsv(file, parseLighterCsv, 'Failed to import CSV')
+    await importParsedCsv(file, parseLighterCsv, 'Failed to import CSV', {
+      table: 'trades',
+      drafts: draftPayloads,
+      refresh: fetchTrades,
+      setErr: setError,
+    })
   }
 
   async function handleImportTxflow(file) {
-    await importParsedCsv(file, parseTxflowCsv, 'Failed to import txflow CSV')
+    await importParsedCsv(file, parseTxflowCsv, 'Failed to import txflow CSV', {
+      table: 'trades',
+      drafts: draftPayloads,
+      refresh: fetchTrades,
+      setErr: setError,
+    })
+  }
+
+  async function handleImportAltCsv(file) {
+    await importParsedCsv(file, parseLighterCsv, 'Failed to import CSV', {
+      table: 'alt_trades',
+      drafts: altDraftPayloads,
+      refresh: fetchAltTrades,
+      setErr: setAltError,
+    })
+  }
+
+  async function handleImportAltTxflow(file) {
+    await importParsedCsv(file, parseTxflowCsv, 'Failed to import txflow CSV', {
+      table: 'alt_trades',
+      drafts: altDraftPayloads,
+      refresh: fetchAltTrades,
+      setErr: setAltError,
+    })
   }
 
   return (
@@ -170,15 +289,19 @@ export default function App() {
           <button className={`nav-tab ${page === 'home' ? 'active' : ''}`} onClick={() => setPage('home')}>
             Home
           </button>
+          <button className={`nav-tab ${page === 'alts' ? 'active' : ''}`} onClick={() => setPage('alts')}>
+            Alts
+          </button>
           <button className={`nav-tab ${page === 'stats' ? 'active' : ''}`} onClick={() => setPage('stats')}>
             Stats
           </button>
         </nav>
       </header>
 
-      {error && <div className="banner-error">{error}</div>}
+      {page !== 'alts' && error && <div className="banner-error">{error}</div>}
+      {page === 'alts' && altError && <div className="banner-error">{altError}</div>}
 
-      {page === 'home' ? (
+      {page === 'home' && (
         <HomePage
           trades={trades}
           loading={loading}
@@ -196,9 +319,29 @@ export default function App() {
           onImportCsv={handleImportCsv}
           onImportTxflow={handleImportTxflow}
         />
-      ) : (
-        <StatsPage trades={trades} />
       )}
+
+      {page === 'alts' && (
+        <AltsPage
+          trades={altTrades}
+          loading={altLoading}
+          showForm={showAltForm}
+          editingTrade={editingAltTrade}
+          saving={saving}
+          onNewTrade={handleNewAltTrade}
+          onSave={handleSaveAlt}
+          onCancel={() => {
+            setShowAltForm(false)
+            setEditingAltTrade(null)
+          }}
+          onEdit={handleEditAlt}
+          onDelete={handleDeleteAlt}
+          onImportCsv={handleImportAltCsv}
+          onImportTxflow={handleImportAltTxflow}
+        />
+      )}
+
+      {page === 'stats' && <StatsPage trades={trades} />}
     </div>
   )
 }

@@ -155,15 +155,23 @@ export function parseLighterCsv(text, excludeIds = new Set()) {
       const entryValue = sumValue(g.openFills)
       const exitUnits = sumSize(g.closeFills)
       const exitValue = sumValue(g.closeFills)
+      const entry_price = round(entryValue / entryUnits)
+      const exit_price = round(exitValue / exitUnits)
+      const position_size_units = round(entryUnits, 6)
+      const fees = round(sumFee(g.openFills) + sumFee(g.closeFills))
+      const pricePnl =
+        (g.direction === 'short' ? entry_price - exit_price : exit_price - entry_price) *
+        position_size_units
       complete.push({
         trade_date: toDatetimeLocal(g.openFills[0].date),
         direction: g.direction,
-        entry_price: round(entryValue / entryUnits),
+        entry_price,
         position_size_usd: round(entryValue),
-        position_size_units: round(entryUnits, 6),
-        exit_price: round(exitValue / exitUnits),
+        position_size_units,
+        exit_price,
         exit_datetime: toDatetimeLocal(g.closeFills[g.closeFills.length - 1].date),
-        fees: round(sumFee(g.openFills) + sumFee(g.closeFills)),
+        fees,
+        pnl: round(pricePnl - fees),
         fillIds: [...fillIds(g.openFills), ...fillIds(g.closeFills)],
       })
     } else if (!hasOpen && hasClose) {
@@ -252,6 +260,7 @@ function buildsFromGroups(groups) {
         exit_price,
         exit_datetime: toDatetimeLocal(g.closeFills[g.closeFills.length - 1].date),
         fees,
+        pnl: realizedPnl == null ? round(pricePnl - fees) : realizedPnl,
         fillIds: [...fillIds(g.openFills), ...fillIds(g.closeFills)],
       })
     } else if (!hasOpen && hasClose) {

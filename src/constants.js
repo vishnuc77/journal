@@ -44,6 +44,14 @@ export const EMPTY_TRADE = {
   would_take_again: "",
 };
 
+export const EMPTY_ALT_TRADE = {
+  trade_date: "",
+  exit_datetime: "",
+  pnl: "",
+  screenshots: [],
+  notes: "",
+};
+
 export const NUMERIC_FIELDS = [
   "entry_price",
   "position_size_usd",

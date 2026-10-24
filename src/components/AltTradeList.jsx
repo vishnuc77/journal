@@ -53,11 +53,11 @@ export default function AltTradeList({ trades, onEdit, onDelete }) {
             {isOpen && (
               <div className="month-trades">
                 <div className="trade-row trade-row-head alt-trade-row">
+                  <span className="cell">Coin</span>
                   <span className="cell">Entry</span>
                   <span className="cell">Exit</span>
                   <span className="cell">Hold</span>
                   <span className="cell">PnL</span>
-                  <span className="cell">Notes</span>
                   <span className="cell" />
                 </div>
                 {monthTrades.map((t) => (
@@ -97,13 +97,13 @@ function AltTradeRow({ trade: t, isOpen, onToggle, onEdit, onDelete }) {
   return (
     <div className="trade-row-wrap">
       <button className="trade-row alt-trade-row" onClick={onToggle}>
+        <span className="cell cell-coin">{t.coin ? t.coin.toUpperCase() : "—"}</span>
         <span className="cell cell-date">{formatWhen(t.trade_date)}</span>
         <span className="cell">{formatWhen(t.exit_datetime)}</span>
         <span className="cell">{formatHoldTime(holdMin)}</span>
         <span className={`cell ${pnl > 0 ? "tone-long" : pnl < 0 ? "tone-short" : ""}`}>
           {pnl !== null ? formatCurrency(pnl) : "—"}
         </span>
-        <span className="cell cell-notes">{notesPreview}</span>
         <span className="cell cell-chevron">{isOpen ? "−" : "+"}</span>
       </button>
       {isOpen && <AltTradeDetail trade={t} onEdit={onEdit} onDelete={onDelete} />}
@@ -132,6 +132,7 @@ function AltTradeDetail({ trade, onEdit, onDelete }) {
       )}
 
       <div className="detail-grid">
+        <Detail label="Coin" value={trade.coin} />
         <Detail label="Entry" value={trade.trade_date} />
         <Detail label="Exit" value={trade.exit_datetime} />
         <Detail label="PnL" value={trade.pnl} />

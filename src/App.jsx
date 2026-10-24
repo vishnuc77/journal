@@ -76,6 +76,8 @@ export default function App() {
     if (payload.exit_datetime === '') payload.exit_datetime = null
     if (payload.notes === '') payload.notes = null
     if (!payload.screenshots) payload.screenshots = []
+    if (payload.coin === '') payload.coin = null 
+      else if (payload.coin) payload.coin = payload.coin.trim().toUpperCase()
     return payload
   }
 
@@ -197,6 +199,7 @@ export default function App() {
     return complete.map((p) => ({
       trade_date: toUtcIso(p.trade_date),
       exit_datetime: toUtcIso(p.exit_datetime),
+      coin: p.coin ?? null,
       pnl: p.pnl ?? null,
       screenshots: [],
       notes: null,

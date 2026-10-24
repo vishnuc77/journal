@@ -65,6 +65,10 @@ function parseAmount(value) {
   return Number.isFinite(n) ? n : 0
 }
 
+function toCoin(s) {
+  return String(s || '').split(/[-/_ ]/)[0].toUpperCase()
+}
+
 function pad2(n) {
   return String(n).padStart(2, '0')
 }
@@ -110,6 +114,7 @@ export function parseLighterCsv(text, excludeIds = new Set()) {
     .filter((r) => r.Market && r.Side)
     .map((r) => ({
       side: r.Side,
+      market: r.Market,
       date: new Date(r.Date.replace(' ', 'T') + 'Z'),
       tradeValue: Number(r['Trade Value']),
       size: Number(r.Size),
@@ -163,6 +168,7 @@ export function parseLighterCsv(text, excludeIds = new Set()) {
         (g.direction === 'short' ? entry_price - exit_price : exit_price - entry_price) *
         position_size_units
       complete.push({
+        coin: toCoin(g.openFills[0].market),
         trade_date: toDatetimeLocal(g.openFills[0].date),
         direction: g.direction,
         entry_price,
@@ -252,6 +258,7 @@ function buildsFromGroups(groups) {
       const fees =
         realizedPnl == null ? round(sumFee(g.openFills) + sumFee(g.closeFills)) : round(pricePnl - realizedPnl)
       complete.push({
+        coin: toCoin(g.openFills[0].symbol),
         trade_date: toDatetimeLocal(g.openFills[0].date),
         direction: g.direction,
         entry_price,
@@ -301,6 +308,7 @@ export function parseTxflowCsv(text) {
       const isOpen = closedPnl === 0
       return {
         side,
+        symbol: r.Symbol,
         date: parseIstToUtc(r['Filled Time']),
         tradeValue: parseAmount(r['Trade Value']),
         size: parseAmount(r['Filled Amount']),

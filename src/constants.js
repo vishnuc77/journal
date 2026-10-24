@@ -45,6 +45,7 @@ export const EMPTY_TRADE = {
 };
 
 export const EMPTY_ALT_TRADE = {
+  coin: "",
   trade_date: "",
   exit_datetime: "",
   pnl: "",

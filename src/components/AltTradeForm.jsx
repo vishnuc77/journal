@@ -7,7 +7,7 @@ function toDatetimeLocalValue(value) {
   return value.slice(0, 16);
 }
 
-export default function AltTradeForm({ initialTrade, onSave, onCancel, saving }) {
+export default function AltTradeForm({ initialTrade, onSave, onCancel, saving, coinOptions = [] }) {
   const [trade, setTrade] = useState(initialTrade || EMPTY_ALT_TRADE);
 
   useEffect(() => {
@@ -36,6 +36,20 @@ export default function AltTradeForm({ initialTrade, onSave, onCancel, saving })
       <section className="form-section">
         <h3>Trade</h3>
         <div className="grid-2">
+          <Field label="Coin">
+            <input
+              type="text"
+              list="alt-coin-options"
+              placeholder="e.g. ETH"
+              value={trade.coin || ""}
+              onChange={(e) => set("coin", e.target.value.toUpperCase())}
+            />
+            <datalist id="alt-coin-options">
+              {coinOptions.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
+          </Field>
           <Field label="Entry date & time">
             <input
               type="datetime-local"
